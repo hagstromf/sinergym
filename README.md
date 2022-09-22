@@ -133,7 +133,7 @@ To install *Sinergym* manually instead of through the container (recommended), f
 - First, clone this repository:
 
 ```sh
-  $ git clone https://github.com/ugr-sail/sinergym.git
+  $ git clone https://github.com/hagstromf/sinergym.git
   $ cd sinergym
 ```
 
