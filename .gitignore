@@ -45,3 +45,7 @@ dist/
 
 #.pytype
 .pytype/
+
+# Conda env
+.conda_envs/
+.conda_pkgs/
