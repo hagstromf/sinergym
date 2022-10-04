@@ -7,6 +7,13 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
+import sys
+import tempfile
+import datetime
+from stable_baselines3.common.logger import KVWriter, HumanOutputFormat, JSONOutputFormat, CSVOutputFormat, TensorBoardOutputFormat
+
+from stable_baselines3.common.logger import Logger as SB3Logger
+
 
 class Logger():
     """Sinergym terminal logger for simulation executions.
@@ -320,3 +327,60 @@ class CSVLogger(object):
         """Deactivate Sinergym CSV logger
         """
         self.flag = False
+
+
+def make_output_format(_format: str, log_dir: str, log_suffix: str = "", max_length: int = 36) -> KVWriter:
+    """
+    return a logger for the requested format. This is a custom version of the same function in stable-baselines 3,
+    that allows for passing the max length to HumanOutputFormat. 
+    :param _format: the requested format to log to ('stdout', 'log', 'json' or 'csv' or 'tensorboard')
+    :param log_dir: the logging directory
+    :param log_suffix: the suffix for the log file
+    :param max_length: sets the max_length parameter of HumanOutputFormat
+    :return: the logger
+    """
+    os.makedirs(log_dir, exist_ok=True)
+    if _format == "stdout":
+        return HumanOutputFormat(sys.stdout, max_length=max_length)
+    elif _format == "log":
+        return HumanOutputFormat(os.path.join(log_dir, f"log{log_suffix}.txt"), max_length=max_length)
+    elif _format == "json":
+        return JSONOutputFormat(os.path.join(log_dir, f"progress{log_suffix}.json"))
+    elif _format == "csv":
+        return CSVOutputFormat(os.path.join(log_dir, f"progress{log_suffix}.csv"))
+    elif _format == "tensorboard":
+        return TensorBoardOutputFormat(log_dir)
+    else:
+        raise ValueError(f"Unknown format specified: {_format}")
+
+
+
+def configure(folder: Optional[str] = None, format_strings: Optional[List[str]] = None, max_length: int = 36) -> Logger:
+    """
+    Configure the current logger. This is a custom version of the same function in stable-baselines 3,
+    that allows for passing the max length of HumanOutputFormat to make_output_format.
+    :param folder: the save location
+        (if None, $SB3_LOGDIR, if still None, tempdir/SB3-[date & time])
+    :param format_strings: the output logging format
+        (if None, $SB3_LOG_FORMAT, if still None, ['stdout', 'log', 'csv'])
+    :return: The logger object.
+    """
+    if folder is None:
+        folder = os.getenv("SB3_LOGDIR")
+    if folder is None:
+        folder = os.path.join(tempfile.gettempdir(), datetime.datetime.now().strftime("SB3-%Y-%m-%d-%H-%M-%S-%f"))
+    assert isinstance(folder, str)
+    os.makedirs(folder, exist_ok=True)
+
+    log_suffix = ""
+    if format_strings is None:
+        format_strings = os.getenv("SB3_LOG_FORMAT", "stdout,log,csv").split(",")
+
+    format_strings = list(filter(None, format_strings))
+    output_formats = [make_output_format(f, folder, log_suffix, max_length) for f in format_strings]
+
+    logger = SB3Logger(folder=folder, output_formats=output_formats)
+    # Only print when some files will be saved
+    if len(format_strings) > 0 and format_strings != ["stdout"]:
+        logger.log(f"Logging to {folder}")
+    return logger
