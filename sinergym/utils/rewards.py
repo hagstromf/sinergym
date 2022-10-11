@@ -260,13 +260,11 @@ class GausTrapReward(BaseReward):
 
         .. math::
             R_tot = sum(R_i) - lambda_energy * sum(P_j), 
-            where R_i is the temperature reward of zone i and P_j is the value energy/power variable j.
+            where R_i is the temperature reward of zone i and P_j is the value of energy/power variable j.
 
             R_i is given by the gaussian-trapezoid mixed function:
 
-                R_i = exp(-lambda_1 * (T_i - T_target)²) - lambda_2 * (max(T - T_{low}, 0) + max(T_{up} - T, 0))
-
-        TODO: Update args list
+                R_i = exp(-lambda_1 * (T_i - T_target)²) - lambda_2 * (max(T_{low} - T_i, 0) + max(T_i - T_{up}, 0))
 
         Args:
             env (Env): Gym environment.
@@ -276,9 +274,12 @@ class GausTrapReward(BaseReward):
             range_comfort_summer (Tuple[int,int]): Temperature comfort range for hot season. Depends on environment you are using.
             summer_start (Tuple[int,int]): Summer session tuple with month and day start. Defaults to (6,1).
             summer_final (Tuple[int,int]): Summer session tuple with month and day end. defaults to (9,30).
-            energy_weight (float, optional): Weight given to the energy term. Defaults to 0.5.
-            lambda_energy (float, optional): Constant for removing dimensions from power(1/W). Defaults to 1e-4.
-            lambda_temperature (float, optional): Constant for removing dimensions from temperature(1/C). Defaults to 1.0.
+            T_targets (Tuple[float, float]): Target temperatures of winter and summer periods respectively. Defaults to None, in which case
+                                             the midpoint of the comfort range is chosen.
+            lambda_energy(float, optional): Constant for removing dimensions from power(1/W). Defaults to 1e-5.
+            lambda_1 (float, optional): Constant for weighting the gaussian part of the comfort expression. Defaults to 0.2.
+            lambda_2 (float, optional): Constant for weighting the trapezoid part of the comfort expression. Defaults to 0.1.
+
         """
 
         super(GausTrapReward, self).__init__(env)
@@ -301,6 +302,7 @@ class GausTrapReward(BaseReward):
         else:
             self.T_target_summer = T_targets[1]
 
+        print(self.T_target_winter)
         self.lambda_energy = lambda_energy
         self.lambda_1 = lambda_1
         self.lambda_2 = lambda_2
@@ -309,9 +311,35 @@ class GausTrapReward(BaseReward):
         self.summer_start = summer_start  # (month,day)
         self.summer_final = summer_final  # (month,day)
 
-    # TODO: Define __call__ function
     def __call__(self) -> Tuple[float, Dict[str, Any]]:
-        pass
+        """
+        Calculate the reward function.
+
+        Returns:
+            Tuple[float, Dict[str, Any]]: Reward value and dictionary with their individual components.
+        """
+        # Current observation
+        obs_dict = self.env.obs_dict.copy()
+
+        # Energy term
+        energies = [v for k, v in obs_dict.items() if k in self.energy_name]
+        reward_energy = - self.lambda_energy * sum(energies)
+
+        # Comfort term
+        reward_comfort, temps = self._get_comfort(obs_dict)
+
+        # Sum of both terms
+        reward = reward_comfort + reward_energy
+
+        reward_terms = {
+            'reward_energy': reward_energy,
+            'total_energy': sum(energies),
+            'reward_comfort': reward_comfort,
+            'abs_comfort': reward_comfort,
+            'temperatures': temps
+        }
+
+        return reward, reward_terms
 
     def _get_comfort(self, obs_dict: Dict[str, Any]) -> Tuple[float, List[float]]:
         """Calculate the comfort term of the reward.
@@ -346,13 +374,46 @@ class GausTrapReward(BaseReward):
         temps = [v for k, v in obs_dict.items() if k in self.temp_name]
         comfort = 0.0
         for T in temps:
-            comfort += exp(-self.lambda_1 * (T - T_target)**2) - self.lambda_2 * (max(T - temp_range[0], 0) + max(temp_range[1] - T, 0))
+            comfort += exp(-self.lambda_1 * (T - T_target)**2) - self.lambda_2 * (max(temp_range[0] - T, 0) + max(T - temp_range[1], 0))
 
         return comfort, temps
 
-# TODO: Define test function for GausTrapReward
 def test_GausTrapReward():
-    pass
+    import gym
+    from pytest import approx
+
+    reward_kwargs = {
+        'temperature_variable': [
+            'Zone Air Temperature(West Zone)',
+            'Zone Air Temperature(East Zone)'
+            ],
+        'energy_variable': 'Facility Total HVAC Electricity Demand Rate(Whole Building)',
+        'range_comfort_winter': (22, 25),
+        'range_comfort_summer': (22, 25)
+        }
+
+    env_name = 'Eplus-datacenter-hot-continuous-strict-v1'
+
+    env = gym.make(env_name, reward=GausTrapReward)#, reward_kwargs=reward_kwargs)
+ 
+    rew_func = GausTrapReward(env, **reward_kwargs)
+    obs_dict = {'month': 1, 'day': 1, 'year':1991, 'Zone Air Temperature(West Zone)': 0, 'Zone Air Temperature(East Zone)': 0}
+    test_obs = [[23.5, 23.5], [16.0, 16.0], [30.0, 30.0]]
+    test_comforts = []
+
+    for i in range(3):
+        obs_dict['Zone Air Temperature(West Zone)'] = test_obs[i][0]
+        obs_dict['Zone Air Temperature(East Zone)'] = test_obs[i][1]
+
+        comfort, _ = rew_func._get_comfort(obs_dict)
+        test_comforts.append(comfort)
+
+    env.close()
+
+    assert test_comforts[0] == approx(2.0)
+    assert test_comforts[1] == approx(-1.2, 0.005)
+    assert test_comforts[2] == approx(-1.0, 0.005)
+
 
 class HourlyLinearReward(LinearReward):
 
