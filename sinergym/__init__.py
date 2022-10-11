@@ -649,7 +649,7 @@ register(
 # ---------------------------------------------------------------------------- #
 #                      Custom Datacenter Environments                          #
 # ---------------------------------------------------------------------------- #
-# C.1) DC, hot weather, continuous actions. Uses the same tighter comfort range /22 C, 25 C) as article
+# C.1) DC, hot weather, continuous actions. Uses the same tighter comfort range (22 C, 25 C) as article
 # "Experimental evaluation of model-free reinforcement learning algorithms for continuous HVAC control"
 # instead of the range (18 C, 27 C) from the ASHRAE guidelines for power equipment in data centres. This
 # tighter interval serves to increase operational safety.
