@@ -94,7 +94,7 @@ class LinearReward(BaseReward):
         reward_energy = - self.lambda_energy * obs_dict[self.energy_name]
 
         # Comfort
-        comfort, temps = self._get_comfort(obs_dict)
+        comfort, temps, comfort_violation = self._get_comfort(obs_dict)
         reward_comfort = - self.lambda_temp * comfort
 
         # Weighted sum of both terms
@@ -106,7 +106,8 @@ class LinearReward(BaseReward):
             'total_energy': obs_dict[self.energy_name],
             'reward_comfort': reward_comfort,
             'abs_comfort': comfort,
-            'temperatures': temps
+            'temperatures': temps, 
+            'comfort_violation': comfort_violation
         }
 
         return reward, reward_terms
@@ -114,11 +115,11 @@ class LinearReward(BaseReward):
     def _get_comfort(self,
                      obs_dict: Dict[str,
                                     Any]) -> Tuple[float,
-                                                   List[float]]:
+                                                   List[float], bool]:
         """Calculate the comfort term of the reward.
 
         Returns:
-            Tuple[float, List[float]]: comfort penalty and List with temperatures used.
+            Tuple[float, List[float], bool]: comfort penalty, List with temperatures used, and comfort violation.
         """
 
         month = obs_dict['month']
@@ -147,7 +148,10 @@ class LinearReward(BaseReward):
             if T < temp_range[0] or T > temp_range[1]:
                 comfort += min(abs(temp_range[0] - T), abs(T - temp_range[1]))
 
-        return comfort, temps
+        # Check if temperature comfort has been violated
+        comfort_violation = True if comfort != 0 else False    
+
+        return comfort, temps, comfort_violation
 
 
 class ExpReward(LinearReward):
@@ -200,11 +204,11 @@ class ExpReward(LinearReward):
     def _get_comfort(self,
                      obs_dict: Dict[str,
                                     Any]) -> Tuple[float,
-                                                   List[float]]:
+                                                   List[float], bool]:
         """Calculate the comfort term of the reward.
 
         Returns:
-            Tuple[float, List[float]]: comfort penalty and List with temperatures used.
+            Tuple[float, List[float], bool]: comfort penalty, List with temperatures used, and comfort violation.
         """
 
         month = obs_dict['month']
@@ -234,7 +238,10 @@ class ExpReward(LinearReward):
                 comfort += exp(min(abs(temp_range[0] - T),
                                    abs(T - temp_range[1])))
 
-        return comfort, temps
+        # Check if temperature comfort has been violated
+        comfort_violation = True if comfort != 0 else False    
+
+        return comfort, temps, comfort_violation
 
 
 class GausTrapReward(BaseReward):
@@ -326,7 +333,7 @@ class GausTrapReward(BaseReward):
         reward_energy = - self.lambda_energy * sum(energies)
 
         # Comfort term
-        reward_comfort, temps = self._get_comfort(obs_dict)
+        reward_comfort, temps, comfort_violation = self._get_comfort(obs_dict)
 
         # Sum of both terms
         reward = reward_comfort + reward_energy
@@ -336,16 +343,17 @@ class GausTrapReward(BaseReward):
             'total_energy': sum(energies),
             'reward_comfort': reward_comfort,
             'abs_comfort': reward_comfort,
-            'temperatures': temps
+            'temperatures': temps,
+            'comfort_violation': comfort_violation
         }
 
         return reward, reward_terms
 
-    def _get_comfort(self, obs_dict: Dict[str, Any]) -> Tuple[float, List[float]]:
+    def _get_comfort(self, obs_dict: Dict[str, Any]) -> Tuple[float, List[float], bool]:
         """Calculate the comfort term of the reward.
 
         Returns:
-            Tuple[float, List[float]]: comfort penalty and List with temperatures used.
+            Tuple[float, List[float], bool]: comfort penalty, List with temperatures used, and comfort violation.
         """
 
         month = obs_dict['month']
@@ -370,13 +378,32 @@ class GausTrapReward(BaseReward):
             temp_range = self.range_comfort_winter
             T_target = self.T_target_winter
 
-
+        # Calculate comfort term
         temps = [v for k, v in obs_dict.items() if k in self.temp_name]
         comfort = 0.0
         for T in temps:
             comfort += exp(-self.lambda_1 * (T - T_target)**2) - self.lambda_2 * (max(temp_range[0] - T, 0) + max(T - temp_range[1], 0))
 
-        return comfort, temps
+        # Check if comfort range has been violated
+        comfort_violation = self._check_comfort_violation(temps, temp_range)
+
+        return comfort, temps, comfort_violation
+
+    def _check_comfort_violation(self, temps: List[float], temp_range: List[float]) -> bool:
+        """Check if the temperature comfort has been violated in any zone.
+        
+        Returns:
+            bool: Boolean value indicating if comfort has been vioolated or not
+        """
+        comfort_violation = False
+
+        for T in temps:
+            if temp_range[0] >= T or T >= temp_range[1]:
+                comfort_violation = True
+                break
+        
+        return comfort_violation
+
 
 def test_GausTrapReward():
     import gym
@@ -400,19 +427,25 @@ def test_GausTrapReward():
     obs_dict = {'month': 1, 'day': 1, 'year':1991, 'Zone Air Temperature(West Zone)': 0, 'Zone Air Temperature(East Zone)': 0}
     test_obs = [[23.5, 23.5], [16.0, 16.0], [30.0, 30.0]]
     test_comforts = []
+    test_violations = []
 
     for i in range(3):
         obs_dict['Zone Air Temperature(West Zone)'] = test_obs[i][0]
         obs_dict['Zone Air Temperature(East Zone)'] = test_obs[i][1]
 
-        comfort, _ = rew_func._get_comfort(obs_dict)
+        comfort, _, comfort_violation = rew_func._get_comfort(obs_dict)
         test_comforts.append(comfort)
+        test_violations.append(comfort_violation)
 
     env.close()
 
     assert test_comforts[0] == approx(2.0)
     assert test_comforts[1] == approx(-1.2, 0.005)
     assert test_comforts[2] == approx(-1.0, 0.005)
+
+    assert test_violations[0] == False
+    assert test_violations[1] == True
+    assert test_violations[2] == True
 
 
 class HourlyLinearReward(LinearReward):

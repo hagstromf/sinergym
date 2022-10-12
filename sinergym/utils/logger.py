@@ -151,8 +151,9 @@ class CSVLogger(object):
                     info['total_power_no_units'])
             if info['abs_comfort'] is not None:
                 self.episode_data['abs_comfort'].append(info['abs_comfort'])
-            if info['comfort_penalty'] != 0:
-                self.episode_data['comfort_violation_timesteps'] += 1
+            #if info['comfort_penalty'] != 0:
+            #    self.episode_data['comfort_violation_timesteps'] += 1
+            self.episode_data['comfort_violation_timesteps'] += info['comfort_violation']
             self.episode_data['total_timesteps'] = info['timestep']
             self.episode_data['total_time_elapsed'] = info['time_elapsed']
 
