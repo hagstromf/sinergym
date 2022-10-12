@@ -54,6 +54,8 @@ class EnergyPlus(object):
             variables (Dict[str,List[str]]): Variables list with observation and action keys in a dictionary.
             act_repeat (int, optional): The number of times to repeat the control action. Defaults to 1.
             max_ep_data_store_num (int, optional): The number of simulation results to keep. Defaults to 10.
+            experiment_path: Path for Sinergym experiment output
+            action_definition: Dict with action definition to automatic building model preparation.
             config_params (Optional[Dict[str, Any]], optional): Dictionary with all extra configuration for simulator. Defaults to None.
         """
         self._env_name = env_name
