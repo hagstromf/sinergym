@@ -40,6 +40,7 @@ class EnergyPlus(object):
             variables: Dict[str, List[str]],
             act_repeat: int = 1,
             max_ep_data_store_num: int = 10,
+            experiment_path: Optional[str] = None,
             action_definition: Optional[Dict[str, Any]] = None,
             config_params: Optional[Dict[str, Any]] = None):
         """EnergyPlus simulation class.
@@ -98,6 +99,7 @@ class EnergyPlus(object):
             variables=variables,
             env_name=self._env_name,
             max_ep_store=self._max_ep_data_store_num,
+            experiment_path=experiment_path,
             action_definition=action_definition,
             extra_config=config_params)
 

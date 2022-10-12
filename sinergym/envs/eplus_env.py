@@ -36,6 +36,7 @@ class EplusEnv(gym.Env):
         reward_kwargs: Optional[Dict[str, Any]] = {},
         act_repeat: int = 1,
         max_ep_data_store_num: int = 10,
+        experiment_path: Optional[str] = None,
         action_definition: Optional[Dict[str, Any]] = None,
         env_name: str = 'eplus-env-v1',
         config_params: Optional[Dict[str, Any]] = None
@@ -90,6 +91,7 @@ class EplusEnv(gym.Env):
             variables=self.variables,
             act_repeat=act_repeat,
             max_ep_data_store_num=max_ep_data_store_num,
+            experiment_path=experiment_path,
             action_definition=action_definition,
             config_params=config_params
         )

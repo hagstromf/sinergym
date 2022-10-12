@@ -39,6 +39,7 @@ class Config(object):
             variables: Dict[str, List[str]],
             env_name: str,
             max_ep_store: int,
+            experiment_path: Optional[str],
             action_definition: Optional[Dict[str, Any]],
             extra_config: Dict[str, Any]):
 
@@ -52,7 +53,14 @@ class Config(object):
             '.rdd')
         # DDY path is deducible using weather_path (only change .epw by .ddy)
         self._ddy_path = self._weather_path.split('.epw')[0] + '.ddy'
-        self.experiment_path = self.set_experiment_working_dir(env_name)
+
+        if experiment_path is None:
+            self.experiment_path = self.set_experiment_working_dir(env_name)
+        else:
+            # Create dir for custom experiment path
+            os.makedirs(experiment_path)
+            self.experiment_path = experiment_path
+
         self.episode_path = None
         self.max_ep_store = max_ep_store
 
