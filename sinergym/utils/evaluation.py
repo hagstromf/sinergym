@@ -79,8 +79,9 @@ def evaluate_policy(model: "base_class.BaseAlgorithm",
             episode_power += info[0]['total_power']
             episode_power_penalty += info[0]['total_power_no_units']
             episode_comfort_penalty += info[0]['comfort_penalty']
-            if info[0]['comfort_penalty'] != 0:
-                episode_steps_comfort_violation += 1
+            #if info[0]['comfort_penalty'] != 0:
+            #    episode_steps_comfort_violation += 1
+            episode_steps_comfort_violation += info[0]['comfort_violation']
             if callback is not None:
                 callback(locals(), globals())
             episode_length += 1
@@ -102,3 +103,6 @@ def evaluate_policy(model: "base_class.BaseAlgorithm",
         result['episodes_power_penalties'].append(episode_power_penalty)
 
     return result
+
+
+

@@ -309,7 +309,8 @@ class GausTrapReward(BaseReward):
         else:
             self.T_target_summer = T_targets[1]
 
-        print(self.T_target_winter)
+        print(f"Target temperatures:\n   Winter: {self.T_target_winter}\n   Summer: {self.T_target_summer}")
+
         self.lambda_energy = lambda_energy
         self.lambda_1 = lambda_1
         self.lambda_2 = lambda_2
