@@ -422,9 +422,9 @@ def test_GausTrapReward():
 
     env_name = 'Eplus-datacenter-hot-continuous-strict-v1'
 
-    env = gym.make(env_name, reward=GausTrapReward)#, reward_kwargs=reward_kwargs)
+    env = gym.make(env_name, reward=GausTrapReward, reward_kwargs=reward_kwargs)
  
-    rew_func = GausTrapReward(env, **reward_kwargs)
+    rew_func = env.reward_fn
     obs_dict = {'month': 1, 'day': 1, 'year':1991, 'Zone Air Temperature(West Zone)': 0, 'Zone Air Temperature(East Zone)': 0}
     test_obs = [[23.5, 23.5], [16.0, 16.0], [30.0, 30.0]]
     test_comforts = []
