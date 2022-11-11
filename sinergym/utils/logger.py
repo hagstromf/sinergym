@@ -356,7 +356,7 @@ def make_output_format(_format: str, log_dir: str, log_suffix: str = "", max_len
 
 
 
-def configure(folder: Optional[str] = None, format_strings: Optional[List[str]] = None, max_length: int = 36) -> Logger:
+def configure(folder: Optional[str] = None, format_strings: Optional[List[str]] = None, max_length: int = 36) -> SB3Logger:
     """
     Configure the current logger. This is a custom version of the same function in stable-baselines 3,
     that allows for passing the max length of HumanOutputFormat to make_output_format.
