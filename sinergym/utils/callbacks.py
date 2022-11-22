@@ -1,6 +1,7 @@
 """Custom Callbacks for stable baselines 3 algorithms."""
 
 import os
+import gc
 from typing import Optional, Union
 
 import gym
@@ -190,7 +191,7 @@ class FedHVACLoggerCallback(BaseCallback):
         :param ep_timesteps: Each timestep during an episode, this value increment 1.
     """
 
-    def __init__(self, sinergym_logger=False, verbose=0):
+    def __init__(self, sinergym_logger=False, client_id=0, verbose=0):
         """Custom callback for plotting additional values in tensorboard.
         Args:
             sinergym_logger (boolean): Indicate if CSVLogger inner Sinergym will be activated or not.
@@ -198,6 +199,7 @@ class FedHVACLoggerCallback(BaseCallback):
         super(FedHVACLoggerCallback, self).__init__(verbose)
 
         self.sinergym_logger = sinergym_logger
+        self.client_id = client_id
 
         self.ep_rewards = []
         self.ep_powers = []
@@ -209,7 +211,16 @@ class FedHVACLoggerCallback(BaseCallback):
         self.month_start_step = 0
         self.console_logger = Logger()
 
+        #self.training_env_name = local_env
+
+        # Training starts at first month of the year 
+        self.current_month = 1
+
     def _on_training_start(self):
+
+        #if self.num_timesteps > 0:
+        #    return
+
         # sinergym logger
         if is_wrapped(self.training_env, LoggerWrapper):
             if self.sinergym_logger:
@@ -227,7 +238,12 @@ class FedHVACLoggerCallback(BaseCallback):
             raise KeyError
 
         # Training starts at first month of the year 
-        self.current_month = 1
+        #self.current_month = 1
+
+        # Record training environment used (useful for identifying which client's metrics are
+        # being printed to stdout in a federated learning scenario)
+        #print(f"SIMULATOR: {self.training_env.get_attr('simulator')}")
+        self.training_env_name = self.training_env.get_attr('simulator')[0].env_name
 
 
     def _on_step(self) -> bool:
@@ -291,15 +307,30 @@ class FedHVACLoggerCallback(BaseCallback):
  
         # Print some info to console every month to see how training is progressing
         if self.verbose > 0 and info['month'] != self.current_month:
-            print(f"Month: {self.current_month}, Year: {info['year']}")
-            print(f"Mean reward: {np.mean(self.ep_rewards)}")
-            print(f"Mean power: {np.mean(self.ep_powers)}")
-            print(f"Mean power penalty: {np.mean(self.ep_term_energy)}")
-            print(f"comfort_violation_time(%): {self.num_comfort_violation / self.ep_timesteps * 100} \n")
+            #print(f"INFO MONTH: {info['month']}", flush=True)
+
+            #print(f"Month: {self.current_month}, Year: {info['year']}")
+            #print(f"Mean reward: {np.mean(self.ep_rewards)}")
+            #print(f"Mean power: {np.mean(self.ep_powers)}")
+            #print(f"Mean power penalty: {np.mean(self.ep_term_energy)}")
+            #print(f"comfort_violation_time(%): {self.num_comfort_violation / self.ep_timesteps * 100} \n")
+            
+            #print(f"SELF: {self}", flush=True)
+            message = f"CLIENT {self.client_id}, "
+            message += f"Training environment: {self.training_env_name} \n"
+            message += f"Month: {self.current_month} \n"
+            message += f"Mean reward: {np.mean(self.ep_rewards)} \n"
+            message += f"Mean power: {np.mean(self.ep_powers)} \n"
+            message += f"Mean power penalty: {np.mean(self.ep_term_energy)} \n"
+            message += f"comfort_violation_time(%): {self.num_comfort_violation / self.ep_timesteps * 100} \n"
+            print(message, flush=True)
+            del message; gc.collect()
             #print(self.locals['rewards'])
-        #    #self.logger.log(*info, level=20)
-        #    self.logger.dump(self.ep_timesteps)
+            #self.logger.log(*info, level=20)
+            #self.logger.dump(self.ep_timesteps
+
             self.current_month = info['month']
+            #self.current_month = max(info['month'] % 13, 1)
 
         self.ep_powers.append(info['total_power'])
         self.ep_term_comfort.append(info['comfort_penalty'])
