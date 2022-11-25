@@ -9,13 +9,16 @@ import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
 from stable_baselines3.common.env_util import is_wrapped
 from stable_baselines3.common.vec_env import VecEnv, sync_envs_normalization
+from stable_baselines3.common.logger import Logger as SB3Logger
 
 from sinergym.utils.evaluation import evaluate_policy
 from sinergym.utils.wrappers import LoggerWrapper, NormalizeObservation
 
-from sinergym.utils.logger import Logger
+from sinergym.utils.logger import Logger, configure
 
 from sinergym.utils.rewards import GausTrapReward
+
+from collections import OrderedDict
 
 
 class LoggerCallback(BaseCallback):
@@ -207,19 +210,11 @@ class FedHVACLoggerCallback(BaseCallback):
         self.ep_term_energy = []
         self.num_comfort_violation = 0
         self.ep_timesteps = 0
-        #self.record = self.logger.record
-        self.month_start_step = 0
-        self.console_logger = Logger()
-
-        #self.training_env_name = local_env
 
         # Training starts at first month of the year 
         self.current_month = 1
 
     def _on_training_start(self):
-
-        #if self.num_timesteps > 0:
-        #    return
 
         # sinergym logger
         if is_wrapped(self.training_env, LoggerWrapper):
@@ -236,9 +231,6 @@ class FedHVACLoggerCallback(BaseCallback):
             self.record = self.logger.record_mean
         else:
             raise KeyError
-
-        # Training starts at first month of the year 
-        #self.current_month = 1
 
         # Record training environment used (useful for identifying which client's metrics are
         # being printed to stdout in a federated learning scenario)
@@ -299,39 +291,14 @@ class FedHVACLoggerCallback(BaseCallback):
         # Store episode data
         try:
             self.ep_rewards.append(self.locals['rewards'][-1])
+            #self.month_rewards.append(self.locals['rewards'][-1])
         except KeyError:
             try:
                 self.ep_rewards.append(self.locals['reward'][-1])
+                #self.month_rewards.append(self.locals['reward'][-1])
             except KeyError:
                 print('Algorithm reward key in locals dict unknown')
  
-        # Print some info to console every month to see how training is progressing
-        if self.verbose > 0 and info['month'] != self.current_month:
-            #print(f"INFO MONTH: {info['month']}", flush=True)
-
-            #print(f"Month: {self.current_month}, Year: {info['year']}")
-            #print(f"Mean reward: {np.mean(self.ep_rewards)}")
-            #print(f"Mean power: {np.mean(self.ep_powers)}")
-            #print(f"Mean power penalty: {np.mean(self.ep_term_energy)}")
-            #print(f"comfort_violation_time(%): {self.num_comfort_violation / self.ep_timesteps * 100} \n")
-            
-            #print(f"SELF: {self}", flush=True)
-            message = f"CLIENT {self.client_id}, "
-            message += f"Training environment: {self.training_env_name} \n"
-            message += f"Month: {self.current_month} \n"
-            message += f"Mean reward: {np.mean(self.ep_rewards)} \n"
-            message += f"Mean power: {np.mean(self.ep_powers)} \n"
-            message += f"Mean power penalty: {np.mean(self.ep_term_energy)} \n"
-            message += f"comfort_violation_time(%): {self.num_comfort_violation / self.ep_timesteps * 100} \n"
-            print(message, flush=True)
-            del message; gc.collect()
-            #print(self.locals['rewards'])
-            #self.logger.log(*info, level=20)
-            #self.logger.dump(self.ep_timesteps
-
-            self.current_month = info['month']
-            #self.current_month = max(info['month'] % 13, 1)
-
         self.ep_powers.append(info['total_power'])
         self.ep_term_comfort.append(info['comfort_penalty'])
         self.ep_term_energy.append(info['total_power_no_units'])
@@ -386,9 +353,255 @@ class FedHVACLoggerCallback(BaseCallback):
 
         return True
 
+
     def on_training_end(self):
         if is_wrapped(self.training_env, LoggerWrapper):
             self.training_env.env_method('activate_logger')
+
+
+class MonthlyLoggerCallback(BaseCallback):
+    # TODO: Check parameter list and update accordingly
+    """Custom callback for plotting additional values in tensorboard and to console. This is used in the fed_hvac project.
+        :param ep_rewards: Here will be stored all rewards during episode.
+        :param ep_powers: Here will be stored all consumption data during episode.
+        :param ep_term_comfort: Here will be stored all comfort terms (reward component) during episode.
+        :param ep_term_energy: Here will be stored all energy terms (reward component) during episode.
+        :param num_comfort_violation: Number of timesteps in which comfort has been violated.
+        :param ep_timesteps: Each timestep during an episode, this value increment 1.
+    """
+
+    def __init__(self, logger: SB3Logger, client_id=0, verbose=0):
+        """Custom callback for plotting additional values in tensorboard.
+        Args:
+            sinergym_logger (boolean): Indicate if CSVLogger inner Sinergym will be activated or not.
+        """
+        super(MonthlyLoggerCallback, self).__init__(verbose)
+
+        self.monthly_logger = logger
+        self.client_id = client_id
+
+        self.month_rewards = []
+        self.month_powers = []
+        self.month_term_energy = []
+        self.month_term_comfort = []
+        self.month_num_comfort_violation = 0
+        self.month_timesteps = 0
+
+        self.month_metrics = OrderedDict()
+        self.month_metrics['month_num'] = 0
+
+        # Training starts at first month of the year 
+        self.current_month = 1
+
+        #self.log_path = self.training_env.get_attr('simulator')[0]._env_working_dir_parent + '/monthly_progress.csv'
+
+    def _on_training_start(self):
+        self.training_env_name = self.training_env.get_attr('simulator')[0].env_name
+        
+
+    def _on_step(self) -> bool:
+        info = self.locals['infos'][-1]
+
+        if info['month'] != self.current_month:
+            
+            # store last month metrics
+            self.month_metrics['month_length'] = self.month_timesteps
+            self.month_metrics['cumulative_reward'] = np.sum(self.month_rewards)
+            self.month_metrics['mean_reward'] = np.mean(self.month_rewards)
+            self.month_metrics['mean_power'] = np.mean(self.month_powers)
+            self.month_metrics['cumulative_power'] = np.sum(self.month_powers)
+            self.month_metrics['mean_comfort_penalty'] = np.mean(self.month_term_comfort)
+            self.month_metrics['cumulative_comfort_penalty'] = np.sum(self.month_term_comfort)
+            self.month_metrics['mean_power_penalty'] = np.mean(self.month_term_energy)
+            self.month_metrics['cumulative_power_penalty'] = np.sum(self.month_term_energy)
+            try:
+                self.month_metrics['comfort_violation_time(%)'] = self.month_num_comfort_violation / \
+                    self.month_timesteps * 100
+            except ZeroDivisionError:
+                self.month_metrics['comfort_violation_time(%)'] = np.nan
+            
+            for key, metric in self.month_metrics.items():
+                self.monthly_logger.record(key, metric)
+            
+            if self.verbose > 0:
+                #print(f"SELF: {self}", flush=True)
+                message = f"CLIENT {self.client_id}, "
+                message += f"Training environment: {self.training_env_name} \n"
+                message += f"Month: {self.current_month} \n"
+                message += f"Mean reward: {self.month_metrics['mean_reward']} \n"
+                message += f"Mean power: {self.month_metrics['mean_power']} \n"
+                message += f"Mean comfort penalty: {self.month_metrics['mean_comfort_penalty']} \n"
+                message += f"Mean power penalty: {self.month_metrics['mean_power_penalty']} \n"
+                message += f"comfort_violation_time(%): {self.month_metrics['comfort_violation_time(%)']} \n"
+                print(message, flush=True)
+
+            # Dump metrics to output formats
+            self.monthly_logger.dump(step=self.month_timesteps)
+
+            self.month_metrics['month_num'] += 1
+            self.current_month = info['month']
+            self.month_rewards = []
+            self.month_powers = []
+            self.month_term_energy = []
+            self.month_term_comfort = []
+            self.month_num_comfort_violation = 0
+            self.month_timesteps = 0
+
+        # Store monthly data
+        try:
+            self.month_rewards.append(self.locals['rewards'][-1])
+        except KeyError:
+            try:
+                self.month_rewards.append(self.locals['reward'][-1])
+            except KeyError:
+                print('Algorithm reward key in locals dict unknown')
+
+        self.month_powers.append(info['total_power'])
+        self.month_term_comfort.append(info['comfort_penalty'])
+        self.month_term_energy.append(info['total_power_no_units'])
+
+        self.month_num_comfort_violation += info['comfort_violation']        
+        self.month_timesteps += 1
+
+        return True
+
+
+    def on_training_end(self):
+        pass
+
+
+class WeeklyLoggerCallback(BaseCallback):
+    # TODO: Check parameter list and update accordingly
+    """Custom callback for plotting additional values in tensorboard and to console. This is used in the fed_hvac project.
+        :param ep_rewards: Here will be stored all rewards during episode.
+        :param ep_powers: Here will be stored all consumption data during episode.
+        :param ep_term_comfort: Here will be stored all comfort terms (reward component) during episode.
+        :param ep_term_energy: Here will be stored all energy terms (reward component) during episode.
+        :param num_comfort_violation: Number of timesteps in which comfort has been violated.
+        :param ep_timesteps: Each timestep during an episode, this value increment 1.
+    """
+
+    def __init__(self, logger: SB3Logger, client_id=0, verbose=0):
+        """Custom callback for plotting additional values in tensorboard.
+        Args:
+            sinergym_logger (boolean): Indicate if CSVLogger inner Sinergym will be activated or not.
+        """
+        super(WeeklyLoggerCallback, self).__init__(verbose)
+
+        self.weekly_logger = logger
+        self.client_id = client_id
+
+        self.week_rewards = []
+        self.week_powers = []
+        self.week_term_energy = []
+        self.week_term_comfort = []
+        self.week_num_comfort_violation = 0
+        self.week_timesteps = 1
+        self.total_timesteps = 1
+
+        self.week_metrics = OrderedDict()
+        self.week_metrics['week_num'] = 0
+
+        # Training starts at first week of the year 
+        self.current_day = 1
+        self.day_count = 0
+
+        self.new_week = False
+
+        self.current_episode = 0
+
+        #self.log_path = self.training_env.get_attr('simulator')[0]._env_working_dir_parent + '/weekly_progress.csv'
+
+    def _on_training_start(self):
+        self.training_env_name = self.training_env.get_attr('simulator')[0].env_name
+        
+
+    def _on_step(self) -> bool:
+        info = self.locals['infos'][-1]
+
+        if info['day'] != self.current_day:
+            self.current_day = info['day']
+            self.day_count += 1
+            if (self.day_count + self.current_episode * 365) % 7 == 0:
+                self.new_week = True
+ 
+        if self.new_week:   
+            # store last week metrics
+            self.week_metrics['week_length'] = self.week_timesteps
+            self.week_metrics['cumulative_reward'] = np.sum(self.week_rewards)
+            self.week_metrics['mean_reward'] = np.mean(self.week_rewards)
+            self.week_metrics['mean_power'] = np.mean(self.week_powers)
+            self.week_metrics['cumulative_power'] = np.sum(self.week_powers)
+            self.week_metrics['mean_comfort_penalty'] = np.mean(self.week_term_comfort)
+            self.week_metrics['cumulative_comfort_penalty'] = np.sum(self.week_term_comfort)
+            self.week_metrics['mean_power_penalty'] = np.mean(self.week_term_energy)
+            self.week_metrics['cumulative_power_penalty'] = np.sum(self.week_term_energy)
+            try:
+                self.week_metrics['comfort_violation_time(%)'] = self.week_num_comfort_violation / \
+                    self.week_timesteps * 100
+            except ZeroDivisionError:
+                self.week_metrics['comfort_violation_time(%)'] = np.nan
+            
+            for key, metric in self.week_metrics.items():
+                self.weekly_logger.record(key, metric)
+            
+            if self.verbose > 0:
+                message = f"CLIENT {self.client_id}, "
+                message += f"Training environment: {self.training_env_name} \n"
+                message += f"Week: {self.week_metrics['week_num'] + 1} \n"
+                message += f"Mean reward: {self.week_metrics['mean_reward']} \n"
+                message += f"Mean power: {self.week_metrics['mean_power']} \n"
+                message += f"Mean comfort penalty: {self.week_metrics['mean_comfort_penalty']} \n"
+                message += f"Mean power penalty: {self.week_metrics['mean_power_penalty']} \n"
+                message += f"comfort_violation_time(%): {self.week_metrics['comfort_violation_time(%)']} \n"
+                print(message, flush=True)
+
+            # Dump metrics to output formats
+            self.weekly_logger.dump(step=self.total_timesteps)
+
+            self.week_metrics['week_num'] += 1
+            self.week_rewards = []
+            self.week_powers = []
+            self.week_term_energy = []
+            self.week_num_comfort_violation = 0
+            self.week_timesteps = 0
+
+            self.new_week = False 
+
+        # Store weekly data
+        try:
+            self.week_rewards.append(self.locals['rewards'][-1])
+        except KeyError:
+            try:
+                self.week_rewards.append(self.locals['reward'][-1])
+            except KeyError:
+                print('Algorithm reward key in locals dict unknown')
+
+        self.week_powers.append(info['total_power'])
+        self.week_term_comfort.append(info['comfort_penalty'])
+        self.week_term_energy.append(info['total_power_no_units'])
+
+        self.week_num_comfort_violation += info['comfort_violation']        
+        self.week_timesteps += 1
+        self.total_timesteps += 1
+
+        #self.current_day += 1
+
+        try:
+            done = self.locals['dones'][-1]
+        except KeyError:
+            try:
+                done = self.locals['done'][-1]
+            except KeyError:
+                print('Algorithm done key in locals dict unknown')
+        if done:
+            self.current_episode += 1
+
+        return True
+
+        
+    def on_training_end(self):
+        pass
 
 
 class LoggerEvalCallback(EvalCallback):
