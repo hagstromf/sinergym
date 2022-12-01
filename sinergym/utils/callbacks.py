@@ -386,6 +386,7 @@ class MonthlyLoggerCallback(BaseCallback):
         self.month_term_comfort = []
         self.month_num_comfort_violation = 0
         self.month_timesteps = 0
+        self.total_timesteps = 0
 
         self.month_metrics = OrderedDict()
         self.month_metrics['month_num'] = 0
@@ -436,7 +437,7 @@ class MonthlyLoggerCallback(BaseCallback):
                 print(message, flush=True)
 
             # Dump metrics to output formats
-            self.monthly_logger.dump(step=self.month_timesteps)
+            self.monthly_logger.dump(step=self.total_timesteps)
 
             self.month_metrics['month_num'] += 1
             self.current_month = info['month']
@@ -462,6 +463,7 @@ class MonthlyLoggerCallback(BaseCallback):
 
         self.month_num_comfort_violation += info['comfort_violation']        
         self.month_timesteps += 1
+        self.total_timesteps += 1
 
         return True
 

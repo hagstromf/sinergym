@@ -80,6 +80,8 @@ class LinearReward(BaseReward):
         self.summer_start = summer_start  # (month,day)
         self.summer_final = summer_final  # (month,day)
 
+        self.temp_range = range_comfort_winter
+
     def __call__(self) -> Tuple[float, Dict[str, Any]]:
         """
         Calculate the reward function.
@@ -138,15 +140,15 @@ class LinearReward(BaseReward):
             self.summer_final[1])
 
         if current_dt >= summer_start_date and current_dt <= summer_final_date:
-            temp_range = self.range_comfort_summer
+            self.temp_range = self.range_comfort_summer
         else:
-            temp_range = self.range_comfort_winter
+            self.temp_range = self.range_comfort_winter
 
         temps = [v for k, v in obs_dict.items() if k in self.temp_name]
         comfort = 0.0
         for T in temps:
-            if T < temp_range[0] or T > temp_range[1]:
-                comfort += min(abs(temp_range[0] - T), abs(T - temp_range[1]))
+            if T < self.temp_range[0] or T > self.temp_range[1]:
+                comfort += min(abs(self.temp_range[0] - T), abs(T - self.temp_range[1]))
 
         # Check if temperature comfort has been violated
         comfort_violation = True if comfort != 0 else False    
@@ -201,6 +203,8 @@ class ExpReward(LinearReward):
             lambda_temperature
         )
 
+        self.temp_range = range_comfort_winter
+
     def _get_comfort(self,
                      obs_dict: Dict[str,
                                     Any]) -> Tuple[float,
@@ -227,16 +231,16 @@ class ExpReward(LinearReward):
             self.summer_final[1])
 
         if current_dt >= summer_start_date and current_dt <= summer_final_date:
-            temp_range = self.range_comfort_summer
+            self.temp_range = self.range_comfort_summer
         else:
-            temp_range = self.range_comfort_winter
+            self.temp_range = self.range_comfort_winter
 
         temps = [v for k, v in obs_dict.items() if k in self.temp_name]
         comfort = 0.0
         for T in temps:
-            if T < temp_range[0] or T > temp_range[1]:
-                comfort += exp(min(abs(temp_range[0] - T),
-                                   abs(T - temp_range[1])))
+            if T < self.temp_range[0] or T > self.temp_range[1]:
+                comfort += exp(min(abs(self.temp_range[0] - T),
+                                   abs(T - self.temp_range[1])))
 
         # Check if temperature comfort has been violated
         comfort_violation = True if comfort != 0 else False    
@@ -319,6 +323,8 @@ class GausTrapReward(BaseReward):
         self.summer_start = summer_start  # (month,day)
         self.summer_final = summer_final  # (month,day)
 
+        self.temp_range = range_comfort_winter
+
     def __call__(self) -> Tuple[float, Dict[str, Any]]:
         """
         Calculate the reward function.
@@ -373,20 +379,20 @@ class GausTrapReward(BaseReward):
             self.summer_final[1])
 
         if current_dt >= summer_start_date and current_dt <= summer_final_date:
-            temp_range = self.range_comfort_summer
+            self.temp_range = self.range_comfort_summer
             T_target = self.T_target_summer
         else:
-            temp_range = self.range_comfort_winter
+            self.temp_range = self.range_comfort_winter
             T_target = self.T_target_winter
 
         # Calculate comfort term
         temps = [v for k, v in obs_dict.items() if k in self.temp_name]
         comfort = 0.0
         for T in temps:
-            comfort += exp(-self.lambda_1 * (T - T_target)**2) - self.lambda_2 * (max(temp_range[0] - T, 0) + max(T - temp_range[1], 0))
+            comfort += exp(-self.lambda_1 * (T - T_target)**2) - self.lambda_2 * (max(self.temp_range[0] - T, 0) + max(T - self.temp_range[1], 0))
 
         # Check if comfort range has been violated
-        comfort_violation = self._check_comfort_violation(temps, temp_range)
+        comfort_violation = self._check_comfort_violation(temps, self.temp_range)
 
         return comfort, temps, comfort_violation
 
