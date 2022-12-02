@@ -3,6 +3,7 @@
 import os
 import gc
 from typing import Optional, Union
+import csv
 
 import gym
 import numpy as np
@@ -395,9 +396,30 @@ class MonthlyLoggerCallback(BaseCallback):
         self.current_month = 1
 
         #self.log_path = self.training_env.get_attr('simulator')[0]._env_working_dir_parent + '/monthly_progress.csv'
+        progress_header_list = [
+            'month_num',
+            'cumulative_reward',
+            'mean_reward',
+            'cumulative_power_consumption',
+            'mean_power_consumption',
+            'cumulative_comfort_penalty',
+            'mean_comfort_penalty',
+            'cumulative_power_penalty',
+            'mean_power_penalty',
+            'comfort_violation (%)',
+            #'mean_comfort_violation',
+            #'std_comfort_violation',
+            #'cumulative_comfort_violation',
+            'length(timesteps)',
+            'time_elapsed(seconds)']
+        self.progress_header = ''
+        for element_header in progress_header_list:
+            self.progress_header += element_header + ','
+        self.progress_header = self.progress_header[:-1] + '\n'
 
     def _on_training_start(self):
         self.training_env_name = self.training_env.get_attr('simulator')[0].env_name
+        self.log_progress_file = self.training_env.get_attr('simulator')[0]._env_working_dir_parent + '/monthly_progress.csv'
         
 
     def _on_step(self) -> bool:
@@ -422,7 +444,8 @@ class MonthlyLoggerCallback(BaseCallback):
                 self.month_metrics['comfort_violation_time(%)'] = np.nan
             
             for key, metric in self.month_metrics.items():
-                self.monthly_logger.record(key, metric)
+                #self.monthly_logger.record(key, metric)
+                self.monthly_logger.record('month/' + key, metric)
             
             if self.verbose > 0:
                 #print(f"SELF: {self}", flush=True)
@@ -438,6 +461,35 @@ class MonthlyLoggerCallback(BaseCallback):
 
             # Dump metrics to output formats
             self.monthly_logger.dump(step=self.total_timesteps)
+
+            # Create CSV file with header if it's required for progress.csv
+            if not os.path.isfile(self.log_progress_file):
+                with open(self.log_progress_file, 'a', newline='\n') as file_obj:
+                    file_obj.write(self.progress_header)
+
+            # building episode row
+            row_contents = [
+                self.month_metrics['month_num'],
+                self.month_metrics['cumulative_reward'],
+                self.month_metrics['mean_reward'],
+                self.month_metrics['cumulative_power'],
+                self.month_metrics['mean_power'],
+                self.month_metrics['cumulative_comfort_penalty'],
+                self.month_metrics['mean_comfort_penalty'],
+                self.month_metrics['cumulative_power_penalty'],
+                self.month_metrics['mean_power_penalty'],
+                self.month_metrics['comfort_violation_time(%)'],
+                #ep_mean_abs_comfort,
+                #ep_std_abs_comfort,
+                #ep_cumulative_abs_comfort,
+                self.total_timesteps,
+                info['time_elapsed']]
+
+            with open(self.log_progress_file, 'a+', newline='') as file_obj:
+                # Create a writer object from csv module
+                csv_writer = csv.writer(file_obj)
+                # Add contents of list as last row in the csv file
+                csv_writer.writerow(row_contents)
 
             self.month_metrics['month_num'] += 1
             self.current_month = info['month']
@@ -512,10 +564,32 @@ class WeeklyLoggerCallback(BaseCallback):
 
         self.current_episode = 0
 
+        progress_header_list = [
+            'month_num',
+            'cumulative_reward',
+            'mean_reward',
+            'cumulative_power_consumption',
+            'mean_power_consumption',
+            'cumulative_comfort_penalty',
+            'mean_comfort_penalty',
+            'cumulative_power_penalty',
+            'mean_power_penalty',
+            'comfort_violation (%)',
+            #'mean_comfort_violation',
+            #'std_comfort_violation',
+            #'cumulative_comfort_violation',
+            'length(timesteps)',
+            'time_elapsed(seconds)']
+        self.progress_header = ''
+        for element_header in progress_header_list:
+            self.progress_header += element_header + ','
+        self.progress_header = self.progress_header[:-1] + '\n'
+
         #self.log_path = self.training_env.get_attr('simulator')[0]._env_working_dir_parent + '/weekly_progress.csv'
 
     def _on_training_start(self):
         self.training_env_name = self.training_env.get_attr('simulator')[0].env_name
+        self.log_progress_file = self.training_env.get_attr('simulator')[0]._env_working_dir_parent + '/weekly_progress.csv'
         
 
     def _on_step(self) -> bool:
@@ -545,7 +619,8 @@ class WeeklyLoggerCallback(BaseCallback):
                 self.week_metrics['comfort_violation_time(%)'] = np.nan
             
             for key, metric in self.week_metrics.items():
-                self.weekly_logger.record(key, metric)
+                #self.weekly_logger.record(key, metric)
+                self.weekly_logger.record('week/' + key, metric)
             
             if self.verbose > 0:
                 message = f"CLIENT {self.client_id}, "
@@ -561,10 +636,40 @@ class WeeklyLoggerCallback(BaseCallback):
             # Dump metrics to output formats
             self.weekly_logger.dump(step=self.total_timesteps)
 
+            # Create CSV file with header if it's required for progress.csv
+            if not os.path.isfile(self.log_progress_file):
+                with open(self.log_progress_file, 'a', newline='\n') as file_obj:
+                    file_obj.write(self.progress_header)
+
+            # building episode row
+            row_contents = [
+                self.week_metrics['week_num'],
+                self.week_metrics['cumulative_reward'],
+                self.week_metrics['mean_reward'],
+                self.week_metrics['cumulative_power'],
+                self.week_metrics['mean_power'],
+                self.week_metrics['cumulative_comfort_penalty'],
+                self.week_metrics['mean_comfort_penalty'],
+                self.week_metrics['cumulative_power_penalty'],
+                self.week_metrics['mean_power_penalty'],
+                self.week_metrics['comfort_violation_time(%)'],
+                #ep_mean_abs_comfort,
+                #ep_std_abs_comfort,
+                #ep_cumulative_abs_comfort,
+                self.total_timesteps,
+                info['time_elapsed']]
+
+            with open(self.log_progress_file, 'a+', newline='') as file_obj:
+                # Create a writer object from csv module
+                csv_writer = csv.writer(file_obj)
+                # Add contents of list as last row in the csv file
+                csv_writer.writerow(row_contents)
+
             self.week_metrics['week_num'] += 1
             self.week_rewards = []
             self.week_powers = []
             self.week_term_energy = []
+            self.week_term_comfort = []
             self.week_num_comfort_violation = 0
             self.week_timesteps = 0
 
