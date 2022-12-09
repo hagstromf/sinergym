@@ -660,7 +660,7 @@ register(
         'idf_file': '2ZoneDataCenterHVAC_wEconomizer.idf',
         'weather_file': 'USA_AZ_Davis-Monthan.AFB.722745_TMY3.epw',
         'observation_space': DEFAULT_DATACENTER_OBSERVATION_SPACE,
-        'observation_variables': DEFAULT_DATACENTER_OBSERVATION_VARIABLES,
+        'observation_variables': CUSTOM_DATACENTER_OBSERVATION_VARIABLES,
         'action_space': DEFAULT_DATACENTER_ACTION_SPACE_CONTINUOUS,
         'action_variables': DEFAULT_DATACENTER_ACTION_VARIABLES,
         'action_mapping': DEFAULT_DATACENTER_ACTION_MAPPING,
@@ -689,12 +689,13 @@ register(
     kwargs={
         'idf_file': '2ZoneDataCenterHVAC_wEconomizer.idf',
         'weather_file': 'USA_AZ_Davis-Monthan.AFB.722745_TMY3.epw',
-        'observation_space': DEFAULT_DATACENTER_OBSERVATION_SPACE,
-        'observation_variables': DEFAULT_DATACENTER_OBSERVATION_VARIABLES,
+        'observation_space': THREE_FORECASTS_DATACENTER_OBSERVATION_SPACE,
+        'observation_variables': CUSTOM_DATACENTER_OBSERVATION_VARIABLES,
         'action_space': DEFAULT_DATACENTER_ACTION_SPACE_CONTINUOUS,
         'action_variables': DEFAULT_DATACENTER_ACTION_VARIABLES,
         'action_mapping': DEFAULT_DATACENTER_ACTION_MAPPING,
         'weather_variability': (2.0, 0.0, 0.001),
+        'weather_forecast_idx': [1, 3, 6],
         'reward': LinearReward,
         'reward_kwargs': {
             'temperature_variable': [
@@ -710,7 +711,39 @@ register(
     }
 )
 
-# C.3) DC, mixed weather, continuous actions. Uses the same tighter comfort range (22 C, 25 C) as article
+# C.3) DC, hot weather, continuous actions, stochastic weather and forecasted weather. 
+# Uses the same tighter comfort range (22 C, 25 C) as article "Experimental evaluation of model-free 
+# reinforcement learning algorithms for continuous HVAC control" instead of the range (18 C, 27 C) from 
+# the ASHRAE guidelines for power equipment in data centres. This tighter interval serves to increase operational safety.
+register(
+    id='Eplus-datacenter-hot-continuous-strict-stochastic-forecast-v1',
+    entry_point='sinergym.envs:EplusEnv',
+    kwargs={
+        'idf_file': '2ZoneDataCenterHVAC_wEconomizer.idf',
+        'weather_file': 'USA_AZ_Davis-Monthan.AFB.722745_TMY3.epw',
+        'observation_space': THREE_FORECASTS_DATACENTER_OBSERVATION_SPACE,
+        'observation_variables': CUSTOM_DATACENTER_OBSERVATION_VARIABLES,
+        'action_space': DEFAULT_DATACENTER_ACTION_SPACE_CONTINUOUS,
+        'action_variables': DEFAULT_DATACENTER_ACTION_VARIABLES,
+        'action_mapping': DEFAULT_DATACENTER_ACTION_MAPPING,
+        'weather_variability': (2.0, 0.0, 0.001),
+        'weather_forecast_idx': [1, 3, 6],
+        'reward': LinearReward,
+        'reward_kwargs': {
+            'temperature_variable': [
+                'Zone Air Temperature(West Zone)',
+                'Zone Air Temperature(East Zone)'
+            ],
+            'energy_variable': 'Facility Total HVAC Electricity Demand Rate(Whole Building)',
+            'range_comfort_winter': (22, 25),
+            'range_comfort_summer': (22, 25)
+        },
+        'env_name': 'datacenter-hot-continuous-strict-stochastic-forecast-v1',
+        'action_definition': DEFAULT_DATACENTER_ACTION_DEFINITION
+    }
+)
+
+# C.4) DC, mixed weather, continuous actions. Uses the same tighter comfort range (22 C, 25 C) as article
 # "Experimental evaluation of model-free reinforcement learning algorithms for continuous HVAC control"
 # instead of the range (18 C, 27 C) from the ASHRAE guidelines for power equipment in data centres. This
 # tighter interval serves to increase operational safety.
@@ -721,7 +754,7 @@ register(
         'idf_file': '2ZoneDataCenterHVAC_wEconomizer.idf',
         'weather_file': 'USA_NY_New.York-J.F.Kennedy.Intl.AP.744860_TMY3.epw',
         'observation_space': DEFAULT_DATACENTER_OBSERVATION_SPACE,
-        'observation_variables': DEFAULT_DATACENTER_OBSERVATION_VARIABLES,
+        'observation_variables': CUSTOM_DATACENTER_OBSERVATION_VARIABLES,
         'action_space': DEFAULT_DATACENTER_ACTION_SPACE_CONTINUOUS,
         'action_variables': DEFAULT_DATACENTER_ACTION_VARIABLES,
         'action_mapping': DEFAULT_DATACENTER_ACTION_MAPPING,
@@ -740,7 +773,7 @@ register(
     }
 )
 
-# C.4) DC, mixed weather, continuous actions, stochastic weather. Uses the same tighter comfort range (22 C, 25 C) as article
+# C.5) DC, mixed weather, continuous actions, stochastic weather. Uses the same tighter comfort range (22 C, 25 C) as article
 # "Experimental evaluation of model-free reinforcement learning algorithms for continuous HVAC control"
 # instead of the range (18 C, 27 C) from the ASHRAE guidelines for power equipment in data centres. This
 # tighter interval serves to increase operational safety.
@@ -751,7 +784,7 @@ register(
         'idf_file': '2ZoneDataCenterHVAC_wEconomizer.idf',
         'weather_file': 'USA_NY_New.York-J.F.Kennedy.Intl.AP.744860_TMY3.epw',
         'observation_space': DEFAULT_DATACENTER_OBSERVATION_SPACE,
-        'observation_variables': DEFAULT_DATACENTER_OBSERVATION_VARIABLES,
+        'observation_variables': CUSTOM_DATACENTER_OBSERVATION_VARIABLES,
         'action_space': DEFAULT_DATACENTER_ACTION_SPACE_CONTINUOUS,
         'action_variables': DEFAULT_DATACENTER_ACTION_VARIABLES,
         'action_mapping': DEFAULT_DATACENTER_ACTION_MAPPING,
@@ -771,7 +804,41 @@ register(
     }
 )
 
-# C.5) DC, cool weather, continuous actions. Uses the same tighter comfort range (22 C, 25 C) as article
+
+# C.6) DC, mixed weather, continuous actions, stochastic weather and forecasted weather. 
+# Uses the same tighter comfort range (22 C, 25 C) as article "Experimental evaluation of model-free 
+# reinforcement learning algorithms for continuous HVAC control" instead of the range (18 C, 27 C) from 
+# the ASHRAE guidelines for power equipment in data centres. This tighter interval serves to increase operational safety.
+register(
+    id='Eplus-datacenter-mixed-continuous-strict-stochastic-forecast-v1',
+    entry_point='sinergym.envs:EplusEnv',
+    kwargs={
+        'idf_file': '2ZoneDataCenterHVAC_wEconomizer.idf',
+        'weather_file': 'USA_NY_New.York-J.F.Kennedy.Intl.AP.744860_TMY3.epw',
+        'observation_space': THREE_FORECASTS_DATACENTER_OBSERVATION_SPACE,
+        'observation_variables': CUSTOM_DATACENTER_OBSERVATION_VARIABLES,
+        'action_space': DEFAULT_DATACENTER_ACTION_SPACE_CONTINUOUS,
+        'action_variables': DEFAULT_DATACENTER_ACTION_VARIABLES,
+        'action_mapping': DEFAULT_DATACENTER_ACTION_MAPPING,
+        'weather_variability': (2.0, 0.0, 0.001),
+        'weather_forecast_idx': [1, 3, 6],
+        'reward': LinearReward,
+        'reward_kwargs': {
+            'temperature_variable': [
+                'Zone Air Temperature(West Zone)',
+                'Zone Air Temperature(East Zone)'
+            ],
+            'energy_variable': 'Facility Total HVAC Electricity Demand Rate(Whole Building)',
+            'range_comfort_winter': (22, 25),
+            'range_comfort_summer': (22, 25)
+        },
+        'env_name': 'datacenter-mixed-continuous-strict-stochastic-forecast-v1',
+        'action_definition': DEFAULT_DATACENTER_ACTION_DEFINITION
+    }
+)
+
+
+# C.7) DC, cool weather, continuous actions. Uses the same tighter comfort range (22 C, 25 C) as article
 # "Experimental evaluation of model-free reinforcement learning algorithms for continuous HVAC control"
 # instead of the range (18 C, 27 C) from the ASHRAE guidelines for power equipment in data centres. This
 # tighter interval serves to increase operational safety.
@@ -782,7 +849,7 @@ register(
         'idf_file': '2ZoneDataCenterHVAC_wEconomizer.idf',
         'weather_file': 'USA_WA_Port.Angeles-William.R.Fairchild.Intl.AP.727885_TMY3.epw',
         'observation_space': DEFAULT_DATACENTER_OBSERVATION_SPACE,
-        'observation_variables': DEFAULT_DATACENTER_OBSERVATION_VARIABLES,
+        'observation_variables': CUSTOM_DATACENTER_OBSERVATION_VARIABLES,
         'action_space': DEFAULT_DATACENTER_ACTION_SPACE_CONTINUOUS,
         'action_variables': DEFAULT_DATACENTER_ACTION_VARIABLES,
         'action_mapping': DEFAULT_DATACENTER_ACTION_MAPPING,
@@ -801,7 +868,7 @@ register(
     }
 )
 
-# C.6) DC, cool weather, continuous actions, stochastic weather. Uses the same tighter comfort range (22 C, 25 C) as article
+# C.8) DC, cool weather, continuous actions, stochastic weather. Uses the same tighter comfort range (22 C, 25 C) as article
 # "Experimental evaluation of model-free reinforcement learning algorithms for continuous HVAC control"
 # instead of the range (18 C, 27 C) from the ASHRAE guidelines for power equipment in data centres. This
 # tighter interval serves to increase operational safety.
@@ -812,7 +879,7 @@ register(
         'idf_file': '2ZoneDataCenterHVAC_wEconomizer.idf',
         'weather_file': 'USA_WA_Port.Angeles-William.R.Fairchild.Intl.AP.727885_TMY3.epw',
         'observation_space': DEFAULT_DATACENTER_OBSERVATION_SPACE,
-        'observation_variables': DEFAULT_DATACENTER_OBSERVATION_VARIABLES,
+        'observation_variables': CUSTOM_DATACENTER_OBSERVATION_VARIABLES,
         'action_space': DEFAULT_DATACENTER_ACTION_SPACE_CONTINUOUS,
         'action_variables': DEFAULT_DATACENTER_ACTION_VARIABLES,
         'action_mapping': DEFAULT_DATACENTER_ACTION_MAPPING,
@@ -828,6 +895,38 @@ register(
             'range_comfort_summer': (22, 25)
         },
         'env_name': 'datacenter-cool-continuous-strict-stochastic-v1',
+        'action_definition': DEFAULT_DATACENTER_ACTION_DEFINITION
+    }
+)
+
+# C.9) DC, mixed weather, continuous actions, stochastic weather and forecasted weather. 
+# Uses the same tighter comfort range (22 C, 25 C) as article "Experimental evaluation of model-free 
+# reinforcement learning algorithms for continuous HVAC control" instead of the range (18 C, 27 C) from 
+# the ASHRAE guidelines for power equipment in data centres. This tighter interval serves to increase operational safety.
+register(
+    id='Eplus-datacenter-cool-continuous-strict-stochastic-forecast-v1',
+    entry_point='sinergym.envs:EplusEnv',
+    kwargs={
+        'idf_file': '2ZoneDataCenterHVAC_wEconomizer.idf',
+        'weather_file': 'USA_WA_Port.Angeles-William.R.Fairchild.Intl.AP.727885_TMY3.epw',
+        'observation_space': THREE_FORECASTS_DATACENTER_OBSERVATION_SPACE,
+        'observation_variables': CUSTOM_DATACENTER_OBSERVATION_VARIABLES,
+        'action_space': DEFAULT_DATACENTER_ACTION_SPACE_CONTINUOUS,
+        'action_variables': DEFAULT_DATACENTER_ACTION_VARIABLES,
+        'action_mapping': DEFAULT_DATACENTER_ACTION_MAPPING,
+        'weather_variability': (2.0, 0.0, 0.001),
+        'weather_forecast_idx': [1, 3, 6],
+        'reward': LinearReward,
+        'reward_kwargs': {
+            'temperature_variable': [
+                'Zone Air Temperature(West Zone)',
+                'Zone Air Temperature(East Zone)'
+            ],
+            'energy_variable': 'Facility Total HVAC Electricity Demand Rate(Whole Building)',
+            'range_comfort_winter': (22, 25),
+            'range_comfort_summer': (22, 25)
+        },
+        'env_name': 'datacenter-cool-continuous-strict-stochastic-forecast-v1',
         'action_definition': DEFAULT_DATACENTER_ACTION_DEFINITION
     }
 )

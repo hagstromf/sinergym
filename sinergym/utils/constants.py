@@ -221,6 +221,34 @@ DEFAULT_DATACENTER_OBSERVATION_VARIABLES = [
     'Facility Total HVAC Electricity Demand Rate(Whole Building)'
 ]
 
+CUSTOM_DATACENTER_OBSERVATION_VARIABLES = [
+    'Site Outdoor Air Drybulb Temperature(Environment)',
+    'Site Outdoor Air Relative Humidity(Environment)',
+    'Site Wind Speed(Environment)',
+    'Site Wind Direction(Environment)',
+    'Site Diffuse Solar Radiation Rate per Area(Environment)',
+    'Site Direct Solar Radiation Rate per Area(Environment)',
+    'Zone Thermostat Heating Setpoint Temperature(West Zone)',
+    'Zone Thermostat Cooling Setpoint Temperature(West Zone)',
+    'Zone Air Temperature(West Zone)',
+    #'Zone Thermal Comfort Mean Radiant Temperature(West Zone PEOPLE)',
+    'Zone Air Relative Humidity(West Zone)',
+    #'Zone Thermal Comfort Clothing Value(West Zone PEOPLE)',
+    #'Zone Thermal Comfort Fanger Model PPD(West Zone PEOPLE)',
+    'Zone People Occupant Count(West Zone)',
+    #'People Air Temperature(West Zone PEOPLE)',
+    'Zone Thermostat Heating Setpoint Temperature(East Zone)',
+    'Zone Thermostat Cooling Setpoint Temperature(East Zone)',
+    'Zone Air Temperature(East Zone)',
+    #'Zone Thermal Comfort Mean Radiant Temperature(East Zone PEOPLE)',
+    'Zone Air Relative Humidity(East Zone)',
+    #'Zone Thermal Comfort Clothing Value(East Zone PEOPLE)',
+    #'Zone Thermal Comfort Fanger Model PPD(East Zone PEOPLE)',
+    'Zone People Occupant Count(East Zone)',
+    #'People Air Temperature(East Zone PEOPLE)',
+    'Facility Total HVAC Electricity Demand Rate(Whole Building)'
+]
+
 DEFAULT_DATACENTER_ACTION_VARIABLES = [
     'West-HtgSetP-RL',
     'West-ClgSetP-RL',
@@ -232,6 +260,12 @@ DEFAULT_DATACENTER_OBSERVATION_SPACE = gym.spaces.Box(
     low=-5e6,
     high=5e6,
     shape=(len(DEFAULT_DATACENTER_OBSERVATION_VARIABLES) + 4,),
+    dtype=np.float32)
+
+THREE_FORECASTS_DATACENTER_OBSERVATION_SPACE = gym.spaces.Box(
+    low=-5e6,
+    high=5e6,
+    shape=(len(CUSTOM_DATACENTER_OBSERVATION_VARIABLES) + 10,),
     dtype=np.float32)
 
 DEFAULT_DATACENTER_ACTION_MAPPING = {

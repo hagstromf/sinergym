@@ -40,6 +40,14 @@ class NormalizeObservation(gym.ObservationWrapper):
         # NOTE: If you want to record day, month and hour, you should add that
         # variables as keys
         for i, variable in enumerate(self.env.variables['observation']):
+            # Check if we are using forecasted values. Forecasted values have same range
+            # as their counterpart at the current timestep, so we can just fetch the range
+            # using the respective current step key
+            if variable.startswith('Forecasted Outdoor Air Drybulb'):
+                variable = 'Site Outdoor Air Drybulb Temperature(Environment)'
+            elif variable.startswith('Forecasted Outdoor Air Relative Humidity'):
+                variable = 'Site Outdoor Air Relative Humidity(Environment)'
+
             # normalization (handle DivisionbyZero Error)
             if(self.ranges[variable][1] - self.ranges[variable][0] == 0):
                 obs[i] = max(
@@ -66,6 +74,8 @@ class NormalizeObservation(gym.ObservationWrapper):
             Optional[np.ndarray]: Last original observation. If it is the first observation, this value is None.
         """
         return self.unwrapped_observation
+
+    get_original_obs = get_unwrapped_obs
 
 
 class MultiObsWrapper(gym.Wrapper):

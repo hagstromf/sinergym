@@ -18,6 +18,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from xml.etree.ElementTree import Element, SubElement, tostring
 
 import numpy as np
+import pandas as pd
+from opyplus import Epm, Idd, WeatherData
 
 from sinergym.utils.common import *
 from sinergym.utils.config import Config
@@ -40,6 +42,7 @@ class EnergyPlus(object):
             variables: Dict[str, List[str]],
             act_repeat: int = 1,
             max_ep_data_store_num: int = 10,
+            weather_forecast_idx: Optional[List[int]] = None,
             experiment_path: Optional[str] = None,
             action_definition: Optional[Dict[str, Any]] = None,
             config_params: Optional[Dict[str, Any]] = None):
@@ -54,6 +57,7 @@ class EnergyPlus(object):
             variables (Dict[str,List[str]]): Variables list with observation and action keys in a dictionary.
             act_repeat (int, optional): The number of times to repeat the control action. Defaults to 1.
             max_ep_data_store_num (int, optional): The number of simulation results to keep. Defaults to 10.
+            weather_forecast_idx (Optional[List[int]], optional): List of ints determining which forecasted weather values to use as observations (in hours from the current timestep).
             experiment_path: Path for Sinergym experiment output
             action_definition: Dict with action definition to automatic building model preparation.
             config_params (Optional[Dict[str, Any]], optional): Dictionary with all extra configuration for simulator. Defaults to None.
@@ -93,6 +97,14 @@ class EnergyPlus(object):
         self._act_repeat = act_repeat
         self._max_ep_data_store_num = max_ep_data_store_num
         self._last_action = [21.0, 25.0]
+
+        # Store indices of forecasted values (in hours ahead) and setup relevant attributes
+        self._weather_forecast_idx = weather_forecast_idx
+        if self._weather_forecast_idx is not None:
+            self._forecast_series = WeatherData.from_epw(self._weather_path).get_weather_series()
+            self._fs_len = len(self._forecast_series.index)
+            self._curr_time = [1, 1, 0]
+            self._curr_time_idx = 0
 
         # Creating models config (with extra params if exits)
         self._config = Config(
@@ -230,6 +242,14 @@ class EnergyPlus(object):
         time_info = get_current_time_info(self._config.building, curSimTim)
         # Add time_info date in the end of the Energyplus observation
         Dblist = time_info + Dblist
+
+        # Add forecasted values to observation at the end and reset current time trackers
+        if self._weather_forecast_idx is not None:
+            self._curr_time = [1, 1, 0]
+            self._curr_time_idx = 0
+            forecast = self._get_forecast_data(time_info)
+            Dblist = Dblist + forecast
+
         # Remember the message header, useful when send data back to EnergyPlus
         self._eplus_msg_header = [version, flag]
         self._curSimTim = curSimTim
@@ -300,6 +320,12 @@ class EnergyPlus(object):
         # Add time_info to the observation (year,month,day and hour) at the
         # beggining
         Dblist = time_info + Dblist
+
+        # Add forecasted values to observation at the end (if using forecasts)
+        if self._weather_forecast_idx is not None:
+            forecast = self._get_forecast_data(time_info)
+            Dblist = Dblist + forecast
+
         # Add terminal state
         # Change some attributes
         self._curSimTim = curSimTim
@@ -370,6 +396,31 @@ class EnergyPlus(object):
         """
         path_list = file_path.split('/')
         return path_list[-1]
+
+
+    def _get_forecast_data(self, time_info: List[int]) -> List[float]:
+        """Get forecasted values of outside drybulb air temperature and outside 
+        air relative humidity"""
+        if time_info[1:] != self._curr_time:
+            self._curr_time = time_info[1:]
+            self._curr_time_idx += 1
+
+        forecast = []
+        for hour in self._weather_forecast_idx:
+            df_tmp = self._forecast_series.iloc[(self._curr_time_idx + hour) % self._fs_len]
+
+            #if self._curr_time_idx == 8758:
+            #    print(f"TIME INFO: {time_info}")
+            #    print(f"FORECASTED DATA IN {hour} hours: \n{df_tmp}")
+
+            forecast.append(df_tmp['drybulb'])
+            forecast.append(df_tmp['relhum'])
+            
+            #if self._curr_time_idx == 8758:
+            #    print(f"FORECAST: {forecast}")
+
+        return forecast
+
 
     def _log_subprocess_info(self, out: Any, logger: logging.Logger) -> None:
         """Logger info message from subprocess

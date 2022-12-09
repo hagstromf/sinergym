@@ -32,6 +32,7 @@ class EplusEnv(gym.Env):
         action_variables: List[str] = [],
         action_mapping: Dict[int, Tuple[float, ...]] = {},
         weather_variability: Optional[Tuple[float]] = None,
+        weather_forecast_idx: Optional[List[int]] = None,
         reward: Any = LinearReward,
         reward_kwargs: Optional[Dict[str, Any]] = {},
         act_repeat: int = 1,
@@ -52,6 +53,7 @@ class EplusEnv(gym.Env):
             action_variables (List[str],optional): Action variables to be controlled in IDF, if that actions names have not been configured manually in IDF, you should configure or use extra_config. Default to empty List.
             action_mapping (Dict[int, Tuple[float, ...]], optional): Action mapping list for discrete actions spaces only. Defaults to empty list.
             weather_variability (Optional[Tuple[float]], optional): Tuple with sigma, mu and tao of the Ornstein-Uhlenbeck process to be applied to weather data. Defaults to None.
+            weather_forecast_idx (Optional[List[int]], optional): List of ints determining which forecasted weather values to use as observations (in hours from the current timestep).
             reward (Any, optional): Reward function instance used for agent feedback. Defaults to LinearReward.
             reward_kwargs (Optional[Dict[str, Any]], optional): Parameters to be passed to the reward function. Defaults to empty dict.
             act_repeat (int, optional): Number of timesteps that an action is repeated in the simulator, regardless of the actions it receives during that repetition interval.
@@ -80,6 +82,7 @@ class EplusEnv(gym.Env):
         self.variables['observation'] = observation_variables
         self.variables['action'] = action_variables
 
+
         # ---------------------------------------------------------------------------- #
         #                                   Simulator                                  #
         # ---------------------------------------------------------------------------- #
@@ -92,6 +95,7 @@ class EplusEnv(gym.Env):
             variables=self.variables,
             act_repeat=act_repeat,
             max_ep_data_store_num=max_ep_data_store_num,
+            weather_forecast_idx=weather_forecast_idx,
             experiment_path=experiment_path,
             action_definition=action_definition,
             config_params=config_params
@@ -103,6 +107,17 @@ class EplusEnv(gym.Env):
 
         self.variables['observation'] = ['year', 'month',
                                          'day', 'hour'] + self.variables['observation']
+
+        # ---------------------------------------------------------------------------- #
+        #        Adding forecasted weather values to observation                       #
+        #        (not needed in simulator)                                             #                                              
+        # ---------------------------------------------------------------------------- #
+
+        #self.weather_forecast_idx = weather_forecast_idx
+        if weather_forecast_idx is not None:
+            for hour in weather_forecast_idx:
+                self.variables['observation'] = self.variables['observation'] + [f'Forecasted Outdoor Air Drybulb Temp (+{hour}h)',
+                                                                                 f'Forecasted Outdoor Air Relative Humidity (+{hour}h)']
 
         # ---------------------------------------------------------------------------- #
         #                              Weather variability                             #
