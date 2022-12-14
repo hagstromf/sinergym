@@ -659,7 +659,7 @@ register(
     kwargs={
         'idf_file': '2ZoneDataCenterHVAC_wEconomizer.idf',
         'weather_file': 'USA_AZ_Davis-Monthan.AFB.722745_TMY3.epw',
-        'observation_space': DEFAULT_DATACENTER_OBSERVATION_SPACE,
+        'observation_space': CUSTOM_DATACENTER_OBSERVATION_SPACE,
         'observation_variables': CUSTOM_DATACENTER_OBSERVATION_VARIABLES,
         'action_space': DEFAULT_DATACENTER_ACTION_SPACE_CONTINUOUS,
         'action_variables': DEFAULT_DATACENTER_ACTION_VARIABLES,
@@ -689,13 +689,12 @@ register(
     kwargs={
         'idf_file': '2ZoneDataCenterHVAC_wEconomizer.idf',
         'weather_file': 'USA_AZ_Davis-Monthan.AFB.722745_TMY3.epw',
-        'observation_space': THREE_FORECASTS_DATACENTER_OBSERVATION_SPACE,
+        'observation_space': CUSTOM_DATACENTER_OBSERVATION_SPACE,
         'observation_variables': CUSTOM_DATACENTER_OBSERVATION_VARIABLES,
         'action_space': DEFAULT_DATACENTER_ACTION_SPACE_CONTINUOUS,
         'action_variables': DEFAULT_DATACENTER_ACTION_VARIABLES,
         'action_mapping': DEFAULT_DATACENTER_ACTION_MAPPING,
         'weather_variability': (2.0, 0.0, 0.001),
-        'weather_forecast_idx': [1, 3, 6],
         'reward': LinearReward,
         'reward_kwargs': {
             'temperature_variable': [
@@ -753,7 +752,7 @@ register(
     kwargs={
         'idf_file': '2ZoneDataCenterHVAC_wEconomizer.idf',
         'weather_file': 'USA_NY_New.York-J.F.Kennedy.Intl.AP.744860_TMY3.epw',
-        'observation_space': DEFAULT_DATACENTER_OBSERVATION_SPACE,
+        'observation_space': CUSTOM_DATACENTER_OBSERVATION_SPACE,
         'observation_variables': CUSTOM_DATACENTER_OBSERVATION_VARIABLES,
         'action_space': DEFAULT_DATACENTER_ACTION_SPACE_CONTINUOUS,
         'action_variables': DEFAULT_DATACENTER_ACTION_VARIABLES,
@@ -783,7 +782,7 @@ register(
     kwargs={
         'idf_file': '2ZoneDataCenterHVAC_wEconomizer.idf',
         'weather_file': 'USA_NY_New.York-J.F.Kennedy.Intl.AP.744860_TMY3.epw',
-        'observation_space': DEFAULT_DATACENTER_OBSERVATION_SPACE,
+        'observation_space': CUSTOM_DATACENTER_OBSERVATION_SPACE,
         'observation_variables': CUSTOM_DATACENTER_OBSERVATION_VARIABLES,
         'action_space': DEFAULT_DATACENTER_ACTION_SPACE_CONTINUOUS,
         'action_variables': DEFAULT_DATACENTER_ACTION_VARIABLES,
@@ -848,7 +847,7 @@ register(
     kwargs={
         'idf_file': '2ZoneDataCenterHVAC_wEconomizer.idf',
         'weather_file': 'USA_WA_Port.Angeles-William.R.Fairchild.Intl.AP.727885_TMY3.epw',
-        'observation_space': DEFAULT_DATACENTER_OBSERVATION_SPACE,
+        'observation_space': CUSTOM_DATACENTER_OBSERVATION_SPACE,
         'observation_variables': CUSTOM_DATACENTER_OBSERVATION_VARIABLES,
         'action_space': DEFAULT_DATACENTER_ACTION_SPACE_CONTINUOUS,
         'action_variables': DEFAULT_DATACENTER_ACTION_VARIABLES,
@@ -878,7 +877,7 @@ register(
     kwargs={
         'idf_file': '2ZoneDataCenterHVAC_wEconomizer.idf',
         'weather_file': 'USA_WA_Port.Angeles-William.R.Fairchild.Intl.AP.727885_TMY3.epw',
-        'observation_space': DEFAULT_DATACENTER_OBSERVATION_SPACE,
+        'observation_space': CUSTOM_DATACENTER_OBSERVATION_SPACE,
         'observation_variables': CUSTOM_DATACENTER_OBSERVATION_VARIABLES,
         'action_space': DEFAULT_DATACENTER_ACTION_SPACE_CONTINUOUS,
         'action_variables': DEFAULT_DATACENTER_ACTION_VARIABLES,

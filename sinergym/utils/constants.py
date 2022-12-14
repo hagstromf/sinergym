@@ -262,6 +262,12 @@ DEFAULT_DATACENTER_OBSERVATION_SPACE = gym.spaces.Box(
     shape=(len(DEFAULT_DATACENTER_OBSERVATION_VARIABLES) + 4,),
     dtype=np.float32)
 
+CUSTOM_DATACENTER_OBSERVATION_SPACE = gym.spaces.Box(
+    low=-5e6,
+    high=5e6,
+    shape=(len(CUSTOM_DATACENTER_OBSERVATION_VARIABLES) + 4,),
+    dtype=np.float32)
+
 THREE_FORECASTS_DATACENTER_OBSERVATION_SPACE = gym.spaces.Box(
     low=-5e6,
     high=5e6,
