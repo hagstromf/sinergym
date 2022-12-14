@@ -9,7 +9,7 @@ import gym
 import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
 from stable_baselines3.common.env_util import is_wrapped
-from stable_baselines3.common.vec_env import VecEnv, sync_envs_normalization
+from stable_baselines3.common.vec_env import VecEnv, sync_envs_normalization, VecNormalize, is_vecenv_wrapped
 from stable_baselines3.common.logger import Logger as SB3Logger
 
 from sinergym.utils.evaluation import evaluate_policy
@@ -235,8 +235,10 @@ class FedHVACLoggerCallback(BaseCallback):
 
         # Record training environment used (useful for identifying which client's metrics are
         # being printed to stdout in a federated learning scenario)
-        #print(f"SIMULATOR: {self.training_env.get_attr('simulator')}")
-        self.training_env_name = self.training_env.get_attr('simulator')[0].env_name
+        if isinstance(self.training_env, VecEnv):
+            self.training_env_name = self.training_env.get_attr('simulator')[0].env_name
+        else:
+            self.training_env_name = self.training_env.simulator.env_name
 
 
     def _on_step(self) -> bool:
@@ -244,22 +246,33 @@ class FedHVACLoggerCallback(BaseCallback):
 
         # OBSERVATION
         variables = self.training_env.get_attr('variables')[0]['observation']
+
         # log normalized and original values
-        if self.training_env.env_is_wrapped(
-                wrapper_class=NormalizeObservation)[0]:
+        if is_vecenv_wrapped(self.training_env, VecNormalize):
             obs_normalized = self.locals['new_obs'][-1]
-            obs = self.training_env.env_method('get_unwrapped_obs')[-1]
+            obs = self.training_env.get_original_obs()[0]
             for i, variable in enumerate(variables):
                 self.record(
                     'normalized_observation/' + variable, obs_normalized[i])
                 self.record(
                     'observation/' + variable, obs[i])
+
+            reward = self.training_env.get_original_reward()[0]
+            self.ep_rewards.append(reward)
         # Only original values
         else:
             obs = self.locals['new_obs'][-1]
             for i, variable in enumerate(variables):
                 self.record(
                     'observation/' + variable, obs[i])
+
+            try:
+                self.ep_rewards.append(self.locals['rewards'][-1])
+            except KeyError:
+                try:
+                    self.ep_rewards.append(self.locals['reward'][-1])
+                except KeyError:
+                    print('Algorithm reward key in locals dict unknown')
 
         # ACTION
         variables = self.training_env.get_attr('variables')[0]['action']
@@ -289,17 +302,6 @@ class FedHVACLoggerCallback(BaseCallback):
             self.record(
                 'action_simulation/' + variable, action_[i])
 
-        # Store episode data
-        try:
-            self.ep_rewards.append(self.locals['rewards'][-1])
-            #self.month_rewards.append(self.locals['rewards'][-1])
-        except KeyError:
-            try:
-                self.ep_rewards.append(self.locals['reward'][-1])
-                #self.month_rewards.append(self.locals['reward'][-1])
-            except KeyError:
-                print('Algorithm reward key in locals dict unknown')
- 
         self.ep_powers.append(info['total_power'])
         self.ep_term_comfort.append(info['comfort_penalty'])
         self.ep_term_energy.append(info['total_power_no_units'])
@@ -316,6 +318,9 @@ class FedHVACLoggerCallback(BaseCallback):
             except KeyError:
                 print('Algorithm done key in locals dict unknown')
         if done:
+            # Record client id (for summary display)
+            self.record('Client', self.client_id)
+            
             # store last episode metrics
             self.episode_metrics = {}
             self.episode_metrics['ep_length'] = self.ep_timesteps
@@ -501,13 +506,17 @@ class MonthlyLoggerCallback(BaseCallback):
             self.month_timesteps = 0
 
         # Store monthly data
-        try:
-            self.month_rewards.append(self.locals['rewards'][-1])
-        except KeyError:
+        if is_vecenv_wrapped(self.training_env, VecNormalize):
+            reward = self.training_env.get_original_reward()[0]
+            self.month_rewards.append(reward)
+        else:
             try:
-                self.month_rewards.append(self.locals['reward'][-1])
+                self.month_rewards.append(self.locals['rewards'][-1])
             except KeyError:
-                print('Algorithm reward key in locals dict unknown')
+                try:
+                    self.month_rewards.append(self.locals['reward'][-1])
+                except KeyError:
+                    print('Algorithm reward key in locals dict unknown')
 
         self.month_powers.append(info['total_power'])
         self.month_term_comfort.append(info['comfort_penalty'])
@@ -676,13 +685,17 @@ class WeeklyLoggerCallback(BaseCallback):
             self.new_week = False 
 
         # Store weekly data
-        try:
-            self.week_rewards.append(self.locals['rewards'][-1])
-        except KeyError:
+        if is_vecenv_wrapped(self.training_env, VecNormalize):
+            reward = self.training_env.get_original_reward()[0]
+            self.week_rewards.append(reward)
+        else:
             try:
-                self.week_rewards.append(self.locals['reward'][-1])
+                self.week_rewards.append(self.locals['rewards'][-1])
             except KeyError:
-                print('Algorithm reward key in locals dict unknown')
+                try:
+                    self.week_rewards.append(self.locals['reward'][-1])
+                except KeyError:
+                    print('Algorithm reward key in locals dict unknown')
 
         self.week_powers.append(info['total_power'])
         self.week_term_comfort.append(info['comfort_penalty'])
@@ -711,6 +724,7 @@ class WeeklyLoggerCallback(BaseCallback):
         pass
 
 
+# TODO: Make LoggeEvalCalback compatible with VecNormalization
 class LoggerEvalCallback(EvalCallback):
     """Callback for evaluating an agent.
         :param eval_env: The environment used for initialization
